@@ -10,8 +10,8 @@ name: URL Monitoring (Legacy - Disabled)
 #   push:
 #     branches: [ main ]
 #     paths:
-      - 'urls.csv'
-      - '.github/workflows/url-monitor-persistent.yml'
+#       - 'urls.csv'
+#       - '.github/workflows/url-monitor-persistent.yml'
 
 # Security: Explicit permissions for the workflow
 permissions:
