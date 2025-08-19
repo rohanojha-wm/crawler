@@ -1,13 +1,15 @@
-name: URL Monitoring with Persistent Database
+name: URL Monitoring (Legacy - Disabled)
 
-on:
-  schedule:
-    # Run every 30 minutes
-    - cron: '*/30 * * * *'
-  workflow_dispatch: # Allow manual triggering
-  push:
-    branches: [ main ]
-    paths:
+# DISABLED: This workflow is redundant with url-monitor-persistent.yml
+# Both were running the same ci_monitor_persistent.py script causing conflicts
+# on:
+#   schedule:
+#     # Run every 30 minutes
+#     - cron: '*/30 * * * *'
+#   workflow_dispatch: # Allow manual triggering
+#   push:
+#     branches: [ main ]
+#     paths:
       - 'urls.csv'
       - '.github/workflows/url-monitor-persistent.yml'
 
