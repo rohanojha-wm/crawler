@@ -185,7 +185,7 @@ def generate_main_dashboard(db: Database, historical_data: Dict):
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <h4 class="mb-0">{latest_stats.get('total_requests', 0)}</h4>
+                                    <h4 class="mb-0">{latest_stats.get('total_pings', 0)}</h4>
                                     <p class="mb-0">Total Checks</p>
                                 </div>
                                 <div class="align-self-center">
@@ -200,7 +200,7 @@ def generate_main_dashboard(db: Database, historical_data: Dict):
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <h4 class="mb-0">{latest_stats.get('successful_requests', 0)}</h4>
+                                    <h4 class="mb-0">{latest_stats.get('successful_pings', 0)}</h4>
                                     <p class="mb-0">Successful</p>
                                 </div>
                                 <div class="align-self-center">
@@ -215,7 +215,7 @@ def generate_main_dashboard(db: Database, historical_data: Dict):
                         <div class="card-body" style="cursor: pointer;">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <h4 class="mb-0">{latest_stats.get('failed_requests', 0)}</h4>
+                                    <h4 class="mb-0">{latest_stats.get('failed_pings', 0)}</h4>
                                     <p class="mb-0">Failed</p>
                                 </div>
                                 <div class="align-self-center">
