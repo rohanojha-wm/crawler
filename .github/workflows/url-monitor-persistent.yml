@@ -44,7 +44,7 @@ jobs:
       uses: actions/cache/restore@v3
       with:
         path: monitoring.db
-        key: monitoring-database-${{ github.repository }}-latest
+        key: monitoring-database-${{ github.repository }}-restore
         restore-keys: |
           monitoring-database-${{ github.repository }}-
       
@@ -93,13 +93,13 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         DATABASE_EXISTS: ${{ env.DATABASE_EXISTS }}
     
-    # Save updated database to cache for next run
+    # Save updated database to cache for next run (unique key to avoid conflicts)
     - name: Save updated database to cache
       if: always()  # Always save database, even if monitoring had issues
       uses: actions/cache/save@v3
       with:
         path: monitoring.db
-        key: monitoring-database-${{ github.repository }}-latest
+        key: monitoring-database-${{ github.repository }}-${{ github.run_number }}-${{ github.run_attempt }}
         
     # Also upload database for use by the report generation job in same run
     - name: Upload database for current run
