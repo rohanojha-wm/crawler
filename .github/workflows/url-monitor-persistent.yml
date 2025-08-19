@@ -57,7 +57,17 @@ jobs:
         fi
     
     - name: Run URL monitoring with persistent database
-      run: python ci_monitor_persistent.py
+      run: |
+        python ci_monitor_persistent.py
+        MONITORING_EXIT_CODE=$?
+        echo "MONITORING_STATUS=$MONITORING_EXIT_CODE" >> $GITHUB_ENV
+        if [ $MONITORING_EXIT_CODE -ne 0 ]; then
+          echo "⚠️ Monitoring completed with some failures (exit code: $MONITORING_EXIT_CODE)"
+        else
+          echo "✅ Monitoring completed successfully"
+        fi
+        # Always continue to upload artifacts regardless of monitoring results
+        exit 0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -71,8 +81,11 @@ jobs:
         path: monitoring.db
         retention-days: 90  # Keep for 90 days (maximum)
     
-    - name: Create results directory
-      run: mkdir -p monitoring-results
+    - name: Ensure results directory exists
+      run: |
+        mkdir -p monitoring-results
+        echo "📁 Results directory structure:"
+        ls -la monitoring-results/ || echo "No files in monitoring-results directory yet"
     
     - name: Generate comprehensive report with historical data
       run: python generate_historical_report.py
@@ -83,6 +96,7 @@ jobs:
         name: monitoring-results-${{ github.run_number }}
         path: monitoring-results/
         retention-days: 30
+        if-no-files-found: warn  # Warn but don't fail if no files found
     
     - name: Create Issue on Failures
       if: failure()
@@ -143,13 +157,35 @@ jobs:
       with:
         name: monitoring-results-${{ github.run_number }}
         path: monitoring-results/
+      continue-on-error: true  # Continue if artifact doesn't exist
     
     - name: Generate comprehensive historical report
       run: |
+        echo "📊 Generating historical report..."
+        if [ -f monitoring.db ]; then
+          echo "✅ Database found: $(stat -c%s monitoring.db) bytes"
+        else
+          echo "⚠️ No database found, will create minimal report"
+        fi
+        
+        echo "📁 Available files:"
+        ls -la monitoring-results/ 2>/dev/null || echo "No monitoring-results directory"
+        
         python generate_historical_report.py
     
+    - name: Check for deployment files
+      id: check_files
+      run: |
+        if [ -d "monitoring-results" ] && [ "$(ls -A monitoring-results)" ]; then
+          echo "FILES_EXIST=true" >> $GITHUB_OUTPUT
+          echo "✅ Files found for deployment"
+        else
+          echo "FILES_EXIST=false" >> $GITHUB_OUTPUT
+          echo "⚠️ No files found for deployment"
+        fi
+    
     - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/main' && steps.check_files.outputs.FILES_EXIST == 'true'
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
