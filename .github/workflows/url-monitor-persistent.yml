@@ -58,16 +58,24 @@ jobs:
     
     - name: Run URL monitoring with persistent database
       run: |
+        echo "🚀 Starting URL monitoring..."
+        set +e  # Don't exit on errors
         python ci_monitor_persistent.py
         MONITORING_EXIT_CODE=$?
+        set -e  # Re-enable exit on errors
+        
         echo "MONITORING_STATUS=$MONITORING_EXIT_CODE" >> $GITHUB_ENV
-        if [ $MONITORING_EXIT_CODE -ne 0 ]; then
-          echo "⚠️ Monitoring completed with some failures (exit code: $MONITORING_EXIT_CODE)"
-        else
+        
+        if [ $MONITORING_EXIT_CODE -eq 0 ]; then
           echo "✅ Monitoring completed successfully"
+          echo "MONITORING_RESULT=success" >> $GITHUB_ENV
+        else
+          echo "⚠️ Monitoring completed with issues (exit code: $MONITORING_EXIT_CODE)"
+          echo "MONITORING_RESULT=warning" >> $GITHUB_ENV
         fi
-        # Always continue to upload artifacts regardless of monitoring results
-        exit 0
+        
+        # Always continue to next steps regardless of monitoring results
+        echo "📦 Proceeding with artifact uploads..."
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -98,8 +106,8 @@ jobs:
         retention-days: 30
         if-no-files-found: warn  # Warn but don't fail if no files found
     
-    - name: Create Issue on Failures
-      if: failure()
+    - name: Create Issue on Critical Failures
+      if: env.MONITORING_STATUS != '0' && env.MONITORING_RESULT == 'warning'
       uses: actions/github-script@v7
       with:
         script: |

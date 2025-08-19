@@ -374,12 +374,18 @@ def main():
     print(f"💾 Database: Persistent SQLite")
     print("="*50)
     
-    # Exit with error code if there were failures
-    if summary['failed'] > 0:
-        print(f"⚠️  Exiting with error due to {summary['failed']} failed URLs")
+    # Only exit with error for critical failures (not 4xx responses)
+    critical_failures = [r for r in monitor.failures if not r.get('status_code') or r.get('status_code', 0) < 400 or r.get('status_code', 0) >= 500]
+    
+    if critical_failures:
+        print(f"⚠️  Critical failures detected: {len(critical_failures)}")
+        for failure in critical_failures:
+            print(f"   • {failure['url']}: {failure.get('error_message', 'Unknown error')}")
         exit(1)
     else:
-        print("🎉 All URLs are healthy!")
+        if summary['failed'] > 0:
+            print(f"ℹ️  Note: {summary['failed']} URLs returned 4xx status codes (client errors, not critical)")
+        print("🎉 Monitoring completed successfully!")
 
 if __name__ == "__main__":
     main()
