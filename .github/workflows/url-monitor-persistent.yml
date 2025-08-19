@@ -99,22 +99,11 @@ jobs:
         path: monitoring.db
         retention-days: 90  # Keep for 90 days (maximum)
     
-    - name: Ensure results directory exists
+    - name: Ensure results directory exists for debugging
       run: |
-        mkdir -p monitoring-results
-        echo "📁 Results directory structure:"
-        ls -la monitoring-results/ || echo "No files in monitoring-results directory yet"
-    
-    - name: Generate comprehensive report with historical data
-      run: python generate_historical_report.py
-    
-    - name: Upload monitoring results
-      uses: actions/upload-artifact@v4
-      with:
-        name: monitoring-results-${{ github.run_number }}
-        path: monitoring-results/
-        retention-days: 30
-        if-no-files-found: warn  # Warn but don't fail if no files found
+        echo "📊 Monitoring completed, database updated"
+        echo "📁 Database size: $(stat -c%s monitoring.db 2>/dev/null || stat -f%z monitoring.db) bytes"
+        echo "✅ Ready for report generation in next job"
     
     - name: Create Issue on Critical Failures
       if: env.MONITORING_STATUS != '0' && env.MONITORING_RESULT == 'warning'
@@ -187,40 +176,24 @@ jobs:
         path: .
       continue-on-error: true
     
-    - name: Download monitoring results
-      id: download_results
-      uses: actions/download-artifact@v4
-      with:
-        name: monitoring-results-${{ github.run_number }}
-        path: monitoring-results/
-      continue-on-error: true  # Continue if artifact doesn't exist
-      
-    - name: Handle artifact downloads
+    - name: Handle database download result  
       run: |
         if [ "${{ steps.download_db_for_report.outcome }}" = "failure" ]; then
-          echo "⚠️ No database artifact found"
+          echo "⚠️ No database artifact found (normal for first run)"
         else
           echo "✅ Downloaded database artifact"
-        fi
-        
-        if [ "${{ steps.download_results.outcome }}" = "failure" ]; then
-          echo "⚠️ No monitoring results artifact found"
-        else
-          echo "✅ Downloaded monitoring results artifact"
         fi
     
     - name: Generate comprehensive historical report
       run: |
         echo "📊 Generating historical report..."
         if [ -f monitoring.db ]; then
-          echo "✅ Database found: $(stat -c%s monitoring.db) bytes"
+          echo "✅ Database found: $(stat -c%s monitoring.db 2>/dev/null || stat -f%z monitoring.db) bytes"
         else
           echo "⚠️ No database found, will create minimal report"
         fi
         
-        echo "📁 Available files:"
-        ls -la monitoring-results/ 2>/dev/null || echo "No monitoring-results directory"
-        
+        echo "🚀 Running report generator..."
         python generate_historical_report.py
     
     - name: Check for deployment files
