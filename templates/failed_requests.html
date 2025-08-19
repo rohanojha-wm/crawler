@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Failed Requests - URL Monitor{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1><i class="fas fa-exclamation-triangle text-danger"></i> Failed Requests</h1>
+            <div class="btn-group" role="group">
+                {% for key, hours in time_filters.items() %}
+                    <a href="{{ url_for('failed_requests', filter=key) }}" 
+                       class="btn btn-outline-danger {% if current_filter == key %}active{% endif %}">
+                        {{ key.upper() }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <div class="display-6 text-danger">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <h5 class="card-title">Total Failures</h5>
+                <h2 class="text-danger">{{ total_failures }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <div class="display-6 text-warning">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <h5 class="card-title">Affected URLs</h5>
+                <h2 class="text-warning">{{ grouped_failures.keys()|length }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <div class="display-6 text-info">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h5 class="card-title">Time Period</h5>
+                <h2 class="text-info">{{ current_filter.upper() }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if failed_results %}
+    <!-- Grouped by URL -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> Failed Requests by URL</h5>
+                </div>
+                <div class="card-body">
+                    {% for url, failures in grouped_failures.items() %}
+                        <div class="mb-4">
+                            <h6 class="text-danger border-bottom pb-2 mb-3">
+                                <i class="fas fa-link"></i> {{ url }}
+                                <span class="badge bg-danger">{{ failures|length }} failures</span>
+                                <span class="badge bg-secondary">{{ failures[0].group_name }}</span>
+                                {% if failures[0].country_code %}
+                                    <span class="badge bg-info">{{ failures[0].country_code }}</span>
+                                {% endif %}
+                            </h6>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Status Code</th>
+                                            <th>Response Time</th>
+                                            <th>Error Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for failure in failures %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-dark">
+                                                        {{ failure.timestamp }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {% if failure.status_code %}
+                                                        <span class="badge bg-{% if failure.status_code >= 400 %}danger{% elif failure.status_code >= 300 %}warning{% else %}secondary{% endif %}">
+                                                            {{ failure.status_code }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">
+                                                            <i class="fas fa-times"></i> N/A
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if failure.response_time %}
+                                                        <span class="text-muted">{{ failure.response_time }}ms</span>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if failure.error_message %}
+                                                        <span class="text-danger">
+                                                            <i class="fas fa-exclamation-circle"></i> {{ failure.error_message }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted">No error message</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline View -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Failure Timeline</h5>
+                </div>
+                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                    {% for failure in failed_results %}
+                        <div class="timeline-item error mb-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold text-danger">{{ failure.url }}</div>
+                                    <small class="text-muted">
+                                        <span class="badge bg-secondary">{{ failure.group_name }}</span>
+                                        {% if failure.country_code %}
+                                            <span class="badge bg-info">{{ failure.country_code }}</span>
+                                        {% endif %}
+                                    </small>
+                                    <div class="mt-1">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock"></i> {{ failure.timestamp }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    {% if failure.status_code %}
+                                        <span class="badge bg-{% if failure.status_code >= 400 %}danger{% elif failure.status_code >= 300 %}warning{% else %}secondary{% endif %}">
+                                            {{ failure.status_code }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Error</span>
+                                    {% endif %}
+                                    {% if failure.response_time %}
+                                        <div><small class="text-muted">{{ failure.response_time }}ms</small></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if failure.error_message %}
+                                <div class="text-danger mt-2">
+                                    <small><i class="fas fa-exclamation-triangle"></i> {{ failure.error_message }}</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                    <h4 class="text-success">No Failures Found</h4>
+                    <p class="text-muted mb-4">All URLs have been responding successfully during the selected time period.</p>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-success">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Navigation -->
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <a href="{{ url_for('view_urls') }}" class="btn btn-outline-secondary ms-2">
+            <i class="fas fa-list"></i> View All URLs
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add sorting functionality to tables
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-refresh every 60 seconds
+        setTimeout(function() {
+            location.reload();
+        }, 60000);
+    });
+</script>
+{% endblock %}

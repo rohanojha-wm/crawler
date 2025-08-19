@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}URLs - URL Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-list"></i> Monitored URLs</h1>
+            <span class="badge bg-secondary fs-6">
+                <i class="fas fa-eye"></i> Read-Only View
+            </span>
+        </div>
+
+        {% if urls %}
+            <div class="card">
+                <div class="card-header">
+                    <h5>All URLs ({{ urls|length }} total)</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Group URLs by group_name and then by country_code -->
+                    {% set grouped_urls = {} %}
+                    {% for url in urls %}
+                        {% set group_name = url.group_name %}
+                        {% set country_code = url.country_code or 'Unknown' %}
+                        
+                        {% if group_name not in grouped_urls %}
+                            {% set _ = grouped_urls.update({group_name: {}}) %}
+                        {% endif %}
+                        
+                        {% if country_code not in grouped_urls[group_name] %}
+                            {% set _ = grouped_urls[group_name].update({country_code: []}) %}
+                        {% endif %}
+                        
+                        {% set _ = grouped_urls[group_name][country_code].append(url) %}
+                    {% endfor %}
+                    
+                    {% for group_name, country_groups in grouped_urls.items() %}
+                        <div class="mb-4">
+                            <h5 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-folder"></i> {{ group_name }}
+                                {% set total_urls = country_groups.values()|map('length')|sum %}
+                                <span class="badge bg-primary">{{ total_urls }} URLs</span>
+                                <span class="badge bg-info">{{ country_groups.keys()|length }} Countries</span>
+                            </h5>
+                            
+                            {% for country_code, country_urls in country_groups.items() %}
+                                <div class="mb-3 ms-3">
+                                    <h6 class="text-secondary mb-2">
+                                        <i class="fas fa-globe"></i> {{ country_code }}
+                                        <span class="badge bg-secondary">{{ country_urls|length }} URLs</span>
+                                    </h6>
+                                    
+                                    <div class="row ms-1">
+                                        {% for url in country_urls %}
+                                            <div class="col-md-6 col-lg-4 mb-3">
+                                                <div class="card h-100 border-left-secondary">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">
+                                                            <a href="{{ url.url }}" target="_blank" class="text-decoration-none">
+                                                                {{ url.url }}
+                                                                <i class="fas fa-external-link-alt fa-sm"></i>
+                                                            </a>
+                                                        </h6>
+                                                        <p class="card-text">
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-tag"></i> {{ url.group_name }}<br>
+                                                                <i class="fas fa-globe"></i> {{ url.country_code or 'Unknown' }}<br>
+                                                                <i class="fas fa-key"></i> ID: {{ url.id }}
+                                                            </small>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Summary Statistics -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h3 class="text-primary">{{ urls|length }}</h3>
+                            <p class="mb-0">Total URLs</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h3 class="text-info">{{ grouped_urls|length }}</h3>
+                            <p class="mb-0">Main Groups</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            {% set total_countries = grouped_urls.values()|map('length')|sum %}
+                            <h3 class="text-warning">{{ total_countries }}</h3>
+                            <p class="mb-0">Country Sub-Groups</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h3 class="text-success">{{ (urls|length / grouped_urls.keys()|length)|round(1) if grouped_urls.keys()|length > 0 else 0 }}</h3>
+                            <p class="mb-0">Avg URLs per Group</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-info-circle fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No URLs Found</h4>
+                    <p class="text-muted mb-4">No URLs are currently configured for monitoring.</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-lock"></i> This is a read-only interface. 
+                        URLs are managed via configuration files or CI/CD.
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add tooltips to external link icons
+    document.addEventListener('DOMContentLoaded', function() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

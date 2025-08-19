@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Upload CSV - URL Monitor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-upload"></i> Upload URL CSV File</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> CSV Format Requirements</h6>
+                    <p>Your CSV file should have the following columns:</p>
+                    <ul>
+                        <li><strong>url</strong> - The URL to monitor (with or without http/https)</li>
+                        <li><strong>group_name</strong> - The group this URL belongs to</li>
+                        <li><strong>countryCode</strong> - Country code for cookie header (optional)</li>
+                    </ul>
+                    <p class="mb-0">Example:</p>
+                    <code>
+                        url,group_name,countryCode<br>
+                        https://www.google.com,Search Engines,US<br>
+                        github.com,Development,US<br>
+                        stackoverflow.com,Development,UK
+                    </code>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_csv') }}">
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label">Select CSV File</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                        <div class="form-text">Only CSV files are accepted</div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Upload and Import URLs
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <div class="text-center">
+                    <h6>Don't have a CSV file?</h6>
+                    <a href="{{ url_for('create_sample_csv') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-download"></i> Create Sample CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Preview Section -->
+        <div class="card mt-4" id="preview-section" style="display: none;">
+            <div class="card-header">
+                <h6><i class="fas fa-eye"></i> File Preview</h6>
+            </div>
+            <div class="card-body">
+                <div id="preview-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('csv_file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file && file.type === 'text/csv') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n').slice(0, 6); // Show first 5 rows + header
+                
+                let preview = '<div class="table-responsive"><table class="table table-sm">';
+                lines.forEach((line, index) => {
+                    if (line.trim()) {
+                        const cells = line.split(',');
+                        preview += '<tr>';
+                        if (index === 0) {
+                            cells.forEach(cell => {
+                                preview += `<th>${cell.trim()}</th>`;
+                            });
+                        } else {
+                            cells.forEach(cell => {
+                                preview += `<td>${cell.trim()}</td>`;
+                            });
+                        }
+                        preview += '</tr>';
+                    }
+                });
+                preview += '</table></div>';
+                
+                if (lines.length > 6) {
+                    preview += '<p class="text-muted"><em>... and more rows</em></p>';
+                }
+                
+                document.getElementById('preview-content').innerHTML = preview;
+                document.getElementById('preview-section').style.display = 'block';
+            };
+            reader.readAsText(file);
+        }
+    });
+</script>
+{% endblock %}

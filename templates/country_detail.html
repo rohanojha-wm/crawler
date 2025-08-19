@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}{{ group_name }} - {{ country_code }} Details - URL Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('dashboard', filter=current_filter) }}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ url_for('group_detail', group_name=group_name, filter=current_filter) }}">{{ group_name }}</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ country_code }}</li>
+                    </ol>
+                </nav>
+                <h1><i class="fas fa-globe"></i> {{ country_code }} in {{ group_name }}</h1>
+                <span class="badge bg-info fs-6">Total Requests: {{ total_requests }}</span>
+            </div>
+        </div>
+
+        <!-- Time Filters -->
+        <div class="mb-4">
+            <div class="btn-group" role="group" aria-label="Time filters">
+                {% for filter_name, hours in time_filters.items() %}
+                    <a href="{{ url_for('country_detail', group_name=group_name, country_code=country_code, filter=filter_name) }}"
+                       class="btn btn-outline-primary {% if current_filter == filter_name %}active{% endif %}">
+                        {{ filter_name.upper() }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Request Details -->
+        {% if all_requests %}
+            <!-- Summary Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            {% set successful_requests = all_requests | selectattr('is_success') | list | length %}
+                            <h3 class="text-success">{{ successful_requests }}</h3>
+                            <p class="mb-0">Successful</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            {% set failed_requests = all_requests | rejectattr('is_success') | list | length %}
+                            <h3 class="text-danger">{{ failed_requests }}</h3>
+                            <p class="mb-0">Failed</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            {% set success_rate = (successful_requests / total_requests * 100) if total_requests > 0 else 0 %}
+                            <h3 class="text-{% if success_rate >= 95 %}success{% elif success_rate >= 85 %}warning{% else %}danger{% endif %}">{{ success_rate|round(1) }}%</h3>
+                            <p class="mb-0">Success Rate</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            {% set response_times = all_requests | selectattr('response_time') | map(attribute='response_time') | list %}
+                            {% set avg_response_time = (response_times | sum / response_times | length) if response_times else 0 %}
+                            <h3 class="text-info">{{ avg_response_time|round(1) }}ms</h3>
+                            <p class="mb-0">Avg Response Time</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Request List -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> All Requests</h5>
+                    <small class="text-muted">Showing all successful and failed requests for the selected time period</small>
+                </div>
+                <div class="card-body">
+                    <!-- Group requests by URL -->
+                    {% set grouped_requests = {} %}
+                    {% for request in all_requests %}
+                        {% if request.url not in grouped_requests %}
+                            {% set _ = grouped_requests.update({request.url: []}) %}
+                        {% endif %}
+                        {% set _ = grouped_requests[request.url].append(request) %}
+                    {% endfor %}
+                    
+                    {% for url, requests in grouped_requests.items() %}
+                        <div class="mb-4">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-link"></i> {{ url }}
+                                <span class="badge bg-primary">{{ requests|length }} requests</span>
+                                {% set url_success_rate = (requests | selectattr('is_success') | list | length / requests | length * 100) if requests else 0 %}
+                                <span class="badge bg-{% if url_success_rate >= 95 %}success{% elif url_success_rate >= 85 %}warning{% else %}danger{% endif %}">{{ url_success_rate|round(1) }}% success</span>
+                            </h6>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Status</th>
+                                            <th>Response Time</th>
+                                            <th>Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for request in requests[:50] %}
+                                            <tr class="{% if request.is_success %}table-success{% else %}table-danger{% endif %}">
+                                                <td>
+                                                    <small>{{ request.timestamp }}</small>
+                                                </td>
+                                                <td>
+                                                    {% if request.status_code %}
+                                                        <span class="badge bg-{% if request.is_success %}success{% elif request.status_code >= 400 %}danger{% else %}warning{% endif %}">
+                                                            {{ request.status_code }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">
+                                                            <i class="fas fa-exclamation-triangle"></i> Error
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if request.response_time %}
+                                                        <span class="text-{% if request.response_time < 500 %}success{% elif request.response_time < 1000 %}warning{% else %}danger{% endif %}">
+                                                            {{ request.response_time }}ms
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if request.error_message %}
+                                                        <small class="text-danger">
+                                                            <i class="fas fa-exclamation-circle"></i> {{ request.error_message }}
+                                                        </small>
+                                                    {% else %}
+                                                        <small class="text-success">
+                                                            <i class="fas fa-check-circle"></i> OK
+                                                        </small>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                        {% if requests|length > 50 %}
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted">
+                                                    <small>... and {{ requests|length - 50 }} more requests</small>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-info-circle fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No Requests Found</h4>
+                    <p class="text-muted">No monitoring data found for {{ country_code }} in {{ group_name }} for the selected period.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

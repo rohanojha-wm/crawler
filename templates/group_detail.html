@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}{{ group_name }} Group Details - URL Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('dashboard', filter=current_filter) }}">Dashboard</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ group_name }}</li>
+                    </ol>
+                </nav>
+                <h1><i class="fas fa-folder"></i> {{ group_name }} Group</h1>
+            </div>
+        </div>
+
+        <!-- Time Filters -->
+        <div class="mb-4">
+            <div class="btn-group" role="group" aria-label="Time filters">
+                {% for filter_name, hours in time_filters.items() %}
+                    <a href="{{ url_for('group_detail', group_name=group_name, filter=filter_name) }}"
+                       class="btn btn-outline-primary {% if current_filter == filter_name %}active{% endif %}">
+                        {{ filter_name.upper() }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Country Statistics Cards -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-globe"></i> Country Overview</h5>
+                <small class="text-muted">Click on any country card to see detailed request history</small>
+            </div>
+            <div class="card-body">
+                {% if country_stats %}
+                    <div class="row">
+                        {% for country in country_stats %}
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="card h-100 country-card border-{% if country.failure_rate > 20 %}danger{% elif country.failure_rate > 5 %}warning{% else %}success{% endif %}" 
+                                     style="cursor: pointer;" 
+                                     onclick="window.location.href='{{ url_for('country_detail', group_name=group_name, country_code=country.country_code, filter=current_filter) }}'">
+                                    <div class="card-header bg-{% if country.failure_rate > 20 %}danger{% elif country.failure_rate > 5 %}warning{% else %}success{% endif %} text-white">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-globe"></i> {{ country.country_code }}
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-12">
+                                                <h4 class="text-primary mb-0">{{ country.total_urls }}</h4>
+                                                <small class="text-muted">URLs</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <hr class="my-3">
+                                        
+                                        <div class="row text-center">
+                                            <div class="col-6">
+                                                <div class="border-end">
+                                                    <h5 class="text-success mb-0">{{ country.success_rate }}%</h5>
+                                                    <small class="text-muted">Success</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <h5 class="text-danger mb-0">{{ country.failure_rate }}%</h5>
+                                                <small class="text-muted">Failure</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <hr class="my-3">
+                                        
+                                        <div class="text-center">
+                                            <h6 class="text-dark mb-0">{{ country.total_requests }}</h6>
+                                            <small class="text-muted">Total Requests</small>
+                                        </div>
+                                        
+                                        {% if country.avg_response_time > 0 %}
+                                            <div class="text-center mt-2">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock"></i> Avg: {{ country.avg_response_time }}ms
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-footer bg-light text-center">
+                                        <small class="text-muted">
+                                            <i class="fas fa-mouse-pointer"></i> Click to see detailed requests
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-info-circle fa-3x mb-3"></i>
+                        <h5>No data available</h5>
+                        <p>No monitoring data found for this group in the selected time period.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h3 class="text-primary">{{ country_stats|length }}</h3>
+                        <p class="mb-0">Countries</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        {% set total_urls = country_stats | map(attribute='total_urls') | sum %}
+                        <h3 class="text-info">{{ total_urls }}</h3>
+                        <p class="mb-0">Total URLs</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        {% set total_requests = country_stats | map(attribute='total_requests') | sum %}
+                        <h3 class="text-success">{{ total_requests }}</h3>
+                        <p class="mb-0">Total Requests</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        {% set successful_requests = country_stats | map(attribute='successful_requests') | sum %}
+                        {% set total_requests = country_stats | map(attribute='total_requests') | sum %}
+                        {% set overall_success_rate = (successful_requests / total_requests * 100) if total_requests > 0 else 0 %}
+                        <h3 class="text-{% if overall_success_rate >= 95 %}success{% elif overall_success_rate >= 85 %}warning{% else %}danger{% endif %}">{{ overall_success_rate|round(1) }}%</h3>
+                        <p class="mb-0">Overall Success Rate</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

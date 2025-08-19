@@ -1,0 +1,57 @@
+name: Test URL Monitor
+
+on:
+  workflow_dispatch: # Manual trigger only
+  pull_request:
+    paths:
+      - 'ci_monitor.py'
+      - 'generate_report.py'
+      - 'urls.csv'
+
+# Security: Explicit permissions for the workflow
+permissions:
+  contents: read      # To checkout repository
+  actions: write      # To upload test artifacts
+
+jobs:
+  test-monitor:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Test CI monitor script
+      run: |
+        python ci_monitor.py
+        echo "✅ CI monitor completed successfully"
+    
+    - name: Generate test report
+      run: |
+        python generate_report.py
+        echo "✅ Report generation completed"
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-monitoring-results
+        path: monitoring-results/
+        retention-days: 7
+    
+    - name: Check generated files
+      run: |
+        echo "📁 Generated files:"
+        ls -la monitoring-results/
+        echo "📊 Summary:"
+        cat monitoring-results/summary.json | head -20
