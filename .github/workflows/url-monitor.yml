@@ -75,7 +75,7 @@ jobs:
       run: mkdir -p monitoring-results
     
     - name: Generate comprehensive report with historical data
-      run: python generate_persistent_report.py
+      run: python generate_historical_report.py
     
     - name: Upload monitoring results
       uses: actions/upload-artifact@v4
