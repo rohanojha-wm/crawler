@@ -40,11 +40,20 @@ jobs:
     
     # Option 1: Download previous database from artifacts
     - name: Download previous database
+      id: download_db
       uses: actions/download-artifact@v4
       with:
         name: monitoring-database
         path: .
       continue-on-error: true  # Continue if no previous database exists
+      
+    - name: Handle download result
+      run: |
+        if [ "${{ steps.download_db.outcome }}" = "failure" ]; then
+          echo "⚠️ No previous database artifact found (this is normal for first run)"
+        else
+          echo "✅ Successfully downloaded previous database"
+        fi
     
     - name: Check if database exists
       run: |
@@ -83,6 +92,7 @@ jobs:
     
     # Save updated database as artifact for next run
     - name: Upload updated database
+      if: always()  # Always upload database, even if monitoring had issues
       uses: actions/upload-artifact@v4
       with:
         name: monitoring-database
@@ -170,6 +180,7 @@ jobs:
       run: pip install -r requirements.txt
     
     - name: Download updated database
+      id: download_db_for_report
       uses: actions/download-artifact@v4
       with:
         name: monitoring-database
@@ -177,11 +188,26 @@ jobs:
       continue-on-error: true
     
     - name: Download monitoring results
+      id: download_results
       uses: actions/download-artifact@v4
       with:
         name: monitoring-results-${{ github.run_number }}
         path: monitoring-results/
       continue-on-error: true  # Continue if artifact doesn't exist
+      
+    - name: Handle artifact downloads
+      run: |
+        if [ "${{ steps.download_db_for_report.outcome }}" = "failure" ]; then
+          echo "⚠️ No database artifact found"
+        else
+          echo "✅ Downloaded database artifact"
+        fi
+        
+        if [ "${{ steps.download_results.outcome }}" = "failure" ]; then
+          echo "⚠️ No monitoring results artifact found"
+        else
+          echo "✅ Downloaded monitoring results artifact"
+        fi
     
     - name: Generate comprehensive historical report
       run: |
